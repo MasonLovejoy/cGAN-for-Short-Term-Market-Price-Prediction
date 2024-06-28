@@ -8,7 +8,7 @@ Author: Mason Lovejoy-Johnson
 Generator:
     
     Used in the neural network to generate a sequence of data that
-    will be sent to the discriminator to see if its real or fake.
+    will be sent to the discriminator to see if it is real or fake.
     This generator will use LSTM's to generate data.
     
 """
@@ -46,13 +46,11 @@ class Generator(nn.Module):
         x, (hidden_state, cell_state) = self.lstm_1(x)
         
         # Do not need to keep cell_state and hidden_state but since it is already
-        # in memory im fine with updating it in case I need to use in the future
+        # in memory I'm fine with updating it in case I need to use it in the future
         
         noise = torch.randn(x.size(0), self.q, self.feats)
-        # Also the inputs for lstm_2 should actually be noise so the lstm can 
-        # generate a random sequence that the discriminator can use. At the moment
-        # idk what I should do for noise generation because I could see this step being 
-        # quite important but well see what happens.
+        # Also the inputs for lstm_2 should be noise so the lstm can 
+        # generate a random sequence that the discriminator can use. At the moment.
 
         noise, (hidden_state, cell_state) = self.lstm_2(noise, (hidden_state, cell_state))
         output = self.ffn2(noise)
