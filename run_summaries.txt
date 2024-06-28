@@ -29,11 +29,11 @@ Iteration of Minimum Loss: 1837
 
 Notes:
 ------
-It seems to preform better but not by much which kinda
+It seems to perform better but not by much which kinda
 makes sense because even tho a random normal is closer 
-to the data's distribution the lstm and ffn would just 
-have to scale the distribution slightly to get to same 
-results but I am going to stick with it going into future
+to the data's distribution, the lstm and ffn would just 
+have to scale the distribution slightly to get to the same 
+results but I am going to stick with it going into the future
 runs.
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -56,9 +56,9 @@ Iteration of Minimum Loss: 2275
 Notes:
 ------
 converges at around 2000 iterations, and does not do much
-better then previous runs. In the future I will go back to 
+better than previous runs. In the future, I will go back to 
 8 filters and change the learning rate down just a little.
-But if i dont see mor obvious changes I am going to commit
+But if I don't see more obvious changes I am going to commit
 to this current learning rate.
 
 
@@ -87,7 +87,7 @@ Notes:
 -------
 Does not seem to preform much better and the average generator loss
 seems to find a local minimum at 10000 iterations, but the total generator
-loss is different. I honestly am confused as fuck about whats going on with
+loss is different. I honestly am confused as to whats going on with
 the loss function. Will continue to improve.
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -112,15 +112,15 @@ Iteration of Minimum Average of 50 Run Loss: 103
 
 Notes:
 ------
-It seems to preform better but still not passing that
-0.40 loss rate like I am looking for. Me sleep now and
+It seems to perform better but still not passing that
+0.40 loss rate like I am looking for. I am sleeping now and
 think on improvements tommorow. Current ideas are the 
 following:
 
 	(1) Increase the size of the data set
 	(2) Compare the Generator with the Discriminator,
-	    it seems that the discriminator is kinda dogshit
-	    whty tho?
+	    it seems that the discriminator is really bad
+	    why tho?
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -130,7 +130,7 @@ Run 5 -
 changes:
 hidden_dim: 1024 -> 512 
 even tho 1024 did better trying to reduce 
-runtime for experimentation. Really using
+runtime for experimentation. Using
 this run to look at both the discriminator
 and the generator. 
 
@@ -157,7 +157,7 @@ Iteration of Minimum Average of 50 Run Loss: 19950
 
 Notes:
 ------
-I cant tell if the discriminator is dog shit or if its just
+I can't tell if the discriminator is bad or if it's just
 adjusting to the data creation. I will fix the discriminator 
 first
 
@@ -167,9 +167,9 @@ first
 Run 6 -
 -------
 changes:
-In order to fix the discriminator I first adjusted the way
+To fix the discriminator I first adjusted the way
 loss is computed by adding the reak and fake losses together.
-Next I am going to adjust the amount of runs of the discriminator
+Next, I am going to adjust the amount of runs of the discriminator
 per each training iteration.
 D-steps_per_G_step: 3 -> 5
 max_iteration: 30000 -> 20000
@@ -197,7 +197,7 @@ Iteration of Minimum Average of 50 Run Loss: 19750
 
 Notes:
 ------
-The model seems to preform way worse, I need to improve 
+The model seems to perform way worse, I need to improve 
 the discriminator more. Will try upping the learning rate.
 It seems that the discriminator still does not converge 
 on a great result yet
@@ -209,8 +209,8 @@ on a great result yet
 Run 7 -
 -------
 changes:
-goal is to make the discriminator learn faster so 
-I decided to up the learning rate and bring the disriminator
+the goal is to make the discriminator learn faster so 
+I decided to up the learning rate and bring the discriminator
 steps per generator step back down.
 D_steps_per_G_step: 5 -> 2
 D_lr: 3e-6 -> 1e-5
@@ -238,8 +238,8 @@ Iteration of Minimum Average of 50 Run Loss: 19150
 
 Notes:
 ------
-I have no clue what to  make of this. The seems to be
-overfitting much quicker then before but I dont know 
+I have no clue what to  make of this. This seems to be
+overfitting much quicker than before but I don't know 
 why changing the lr or the steps per g step would do 
 that. The discriminator is still not improving fast
 enough and needs to get better.
@@ -250,7 +250,7 @@ enough and needs to get better.
 Run 8 -
 -------
 changes:
-Im going to change the discriminator run amount per
+I am going to change the discriminator run amount per
 generator to hopefully equalize how quickly the generator overfits.
 D_steps_per_G_step: 2 -> 5
 filter_num: 8 -> 16
