@@ -21,9 +21,7 @@ Notes for Model Optimization:
     (1) Play with filter numbers to see how that effects performance
     (2) In Conv2d make kernel_size = (3,1) to better find short term
         trends, but this will require me to change the input_size
-    (3) I know nothing really about the MaxPool2d function may want
-        to see if it is worth adjusting 
-    (4) Also Flatten and Linear may be played around with in order to 
+    (3) Flatten and Linear may be played around with in order to 
         to increase information available to the model in the sigmoid
         function
 """
