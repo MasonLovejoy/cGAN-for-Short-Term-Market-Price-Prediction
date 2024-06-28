@@ -15,20 +15,20 @@ I use a Conditional Generative Adversarial Neural Network where the generator is
 Convolutional Neural Network.
 
 Papers used as references - 
-(1) Deep generative modeling for financial time series with application in VaR: a comparative review: https://arxiv.org/abs/2401.10370
-(2) Integrating Generative AI into Financial Market Prediction for Improved Decision Making: https://arxiv.org/abs/2404.03523
-(3) LONG SHORT-TERM MEMORY: https://www.bioinf.jku.at/publications/older/2604.pdf
-(4) Generative Adversarial Networks in Finance: an overview: https://arxiv.org/abs/2106.06364
+1. Deep generative modeling for financial time series with application in VaR: a comparative review: https://arxiv.org/abs/2401.10370
+2. Integrating Generative AI into Financial Market Prediction for Improved Decision Making: https://arxiv.org/abs/2404.03523
+3. LONG SHORT-TERM MEMORY: https://www.bioinf.jku.at/publications/older/2604.pdf
+4. Generative Adversarial Networks in Finance: an overview: https://arxiv.org/abs/2106.06364
 
---------------
-    NOTICE
---------------
-- 6/24/2024
-I am currently still working on this project, and currently need to improve -
-(1) Multiple data preprocessing steps (current ideas):
-            - Fourier Discretization of data
-            - Differential Preprocessing
-            - ARMIA
-(2) Noise generation techniques for the noise being sent into the second LSTM layer in the generator
+You can run the training phase yourself using the cGAN_model file.
+
+DEV NOTES
+________________
+6/24/2024: I am currently still working on this project, and currently need to improve -
+* Data Preprocessing steps (current ideas):
+    1. Fourier Discretization of data
+    2. Differential Preprocessing
+    3. ARMIA
+* Noise generation techniques for the noise being sent into the second LSTM layer in the generator
 
 
