@@ -22,13 +22,4 @@ Papers used as references -
 
 You can run the training phase yourself using the cGAN_model file.
 
-DEV NOTES
-________________
-6/24/2024: I am currently still working on this project, and currently need to improve -
-* Data Preprocessing steps (current ideas):
-    1. Fourier Discretization of data
-    2. Differential Preprocessing
-    3. ARMIA
-* Noise generation techniques for the noise being sent into the second LSTM layer in the generator
-
 
