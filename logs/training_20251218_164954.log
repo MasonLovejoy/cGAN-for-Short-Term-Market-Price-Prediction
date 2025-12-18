@@ -1,0 +1,14 @@
+2025-12-18 16:49:54,618 - INFO - Training on device: cuda
+2025-12-18 16:49:54,619 - INFO - Configuration: TrainingConfig(feature_size=42, hidden_dim=256, filter_num=4, p=3, q=1, batch_size=32, num_iterations=40000, d_steps_per_g_step=5, g_lr=0.0001, d_lr=0.0004, betas=(0.0, 0.9), gradient_clip=1.0, gradient_penalty_weight=10.0, label_smoothing=True, real_label_range=(0.7, 1.2), fake_label_range=(0.0, 0.3), instance_noise_std=0.1, noise_decay=0.9999, use_ema=True, ema_decay=0.999, use_feature_matching=True, feature_matching_weight=0.1, use_minibatch_stddev=True, log_interval=50, checkpoint_interval=1000, data_path='data/nvda_data_tensor', checkpoint_dir='checkpoints', log_dir='logs')
+2025-12-18 16:49:54,625 - INFO - Loaded data with shape: torch.Size([27, 4, 42])
+2025-12-18 16:49:56,565 - INFO - Generator parameters: 3,086,762
+2025-12-18 16:49:56,566 - INFO - Discriminator parameters: 3,317
+2025-12-18 16:49:56,566 - INFO - ============================================================
+2025-12-18 16:49:56,567 - INFO - Starting Training
+2025-12-18 16:49:56,567 - INFO - ============================================================
+2025-12-18 16:50:09,585 - INFO - Iter     50 | G: 0.6395 | D: 1.3774 | G_adv: 0.6095 | G_recon: 0.0295
+2025-12-18 16:50:09,707 - INFO - Saved best model at iteration 49
+2025-12-18 16:50:21,625 - INFO - Training interrupted by user
+2025-12-18 16:50:22,941 - INFO - Saved training curves: logs\training_curves_20251218_165022.png
+2025-12-18 16:50:22,941 - INFO - Training completed
+2025-12-18 16:50:22,943 - INFO - Saved summary: logs\summary_20251218_165022.json

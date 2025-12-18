@@ -1,0 +1,46 @@
+{
+  "total_iterations": 89,
+  "best_g_loss": 0.6394561612606049,
+  "final_g_loss": 0.6309176087379456,
+  "final_d_loss": 1.3861813068389892,
+  "min_g_loss": 0.5912121534347534,
+  "config": {
+    "feature_size": 42,
+    "hidden_dim": 256,
+    "filter_num": 4,
+    "p": 3,
+    "q": 1,
+    "batch_size": 32,
+    "num_iterations": 40000,
+    "d_steps_per_g_step": 5,
+    "g_lr": 0.0001,
+    "d_lr": 0.0004,
+    "betas": [
+      0.0,
+      0.9
+    ],
+    "gradient_clip": 1.0,
+    "gradient_penalty_weight": 10.0,
+    "label_smoothing": true,
+    "real_label_range": [
+      0.7,
+      1.2
+    ],
+    "fake_label_range": [
+      0.0,
+      0.3
+    ],
+    "instance_noise_std": 0.1,
+    "noise_decay": 0.9999,
+    "use_ema": true,
+    "ema_decay": 0.999,
+    "use_feature_matching": true,
+    "feature_matching_weight": 0.1,
+    "use_minibatch_stddev": true,
+    "log_interval": 50,
+    "checkpoint_interval": 1000,
+    "data_path": "data/nvda_data_tensor",
+    "checkpoint_dir": "checkpoints",
+    "log_dir": "logs"
+  }
+}
