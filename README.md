@@ -1,25 +1,47 @@
-cGAN for short-term Nvidia Price Prediction:
----------------------------------------------
+# Conditional GAN for Multivariate Stock Time-Series Forecasting
 
-This project was undertaken to deepen understanding of time series data and neural network architectures tailored for predictive analysis. Two key learning outcomes emerged throughout its development: mastering time series data preprocessing and refining neural network architecture design.
+This project implements a Conditional GAN (cGAN) architecture for multistep forecasting of stock price sequences, built from scratch in PyTorch. The system learns to generate realistic continuations of market windows using adversarial, reconstruction, and feature-matching losses.
 
-A primary focus of this project was to train the model exclusively on short-term data. The rationale behind this approach was to enhance the accuracy of price prediction by capturing transient trends effectively. While long-term data can grasp broader price trends, it often lacks precision in specific price predictions. The hypothesis was that short-term data would yield more precise predictions tailored to particular price movements.
+## The project includes:
 
-Time Series Data Pre-processing -
-When it comes to data preprocessing I use many different methods and will continue to add or subtract as I improve the model. The first step I took was feature expansion
-for the financial data. This process went by taking the data and adding common market technical indicators such Bollinger Bands, Rolling Averages, Momentum, MACD signal,
-and various other common indicators. I then used log transformations and z-score normalization on the relevant features to ensure the data was a standard normal distribution.
+- full training framework + logging + checkpointing
+- custom preprocessing pipeline for technical indicators
+- custom discriminator + encoder/decoder generator
+- Exponential Moving Average of weights for stability
+- gradient penalty + label smoothing + instance noise
 
-Network Architecture - 
-I use a Conditional Generative Adversarial Neural Network where the generator is two consecutive LSTM networks for signal generation and the discriminator is a 
-Convolutional Neural Network.
+## Motivation
 
-Papers used as references - 
+Traditional time-series models struggle to capture multimodal futures and uncertainty. GAN-based forecasters can learn distributions over future price movements rather than point predictions, enabling more realistic simulations of market trajectories.
+
+# Project Structure
+├── data_preprocessing.py   # feature engineering + tensor construction  
+├── models.py               # generator/discriminator modules + EMA  
+├── train.py                # training system + checkpointing + metrics  
+├── checkpoints/            # saved models  
+├── logs/                   # metrics, visualizations, and summaries  
+└── data/                   # raw + processed csv and tensor data  
+
+
+# Usage
+Train the cGAN from CLI:  
+python train.py  
+
+Checkpoints and logs will be automatically stored in:  
+
+./checkpoints/  
+./logs/  
+
+# Output artifacts
+- learning curves (.png)  
+- JSON training summary files  
+- saved checkpoints & best model
+- console + file logging
+
+# Papers used as references - 
 1. Deep generative modeling for financial time series with application in VaR: a comparative review: https://arxiv.org/abs/2401.10370
 2. Integrating Generative AI into Financial Market Prediction for Improved Decision Making: https://arxiv.org/abs/2404.03523
 3. LONG SHORT-TERM MEMORY: https://www.bioinf.jku.at/publications/older/2604.pdf
 4. Generative Adversarial Networks in Finance: an overview: https://arxiv.org/abs/2106.06364
-
-You can run the training phase yourself using the cGAN_model file.
 
 
