@@ -9,8 +9,8 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as py
 
-from generator import Generator
-from discriminator import Discriminator
+from models import GeneratorPlanner
+from models import DiscriminatorPlanner
 from cGAN_training import CGANTrainer
 
 path = 'data//nvda_data_tensor' 
@@ -138,4 +138,5 @@ for i in range(0, 40000):
     d_loss_list.append(d_loss_real + d_loss_fake)
     
 run_summary(g_loss_list, avg_g_loss_list, 'Generator')
+
 run_summary(d_loss_list, avg_d_loss_list, 'Discriminator')
