@@ -1,42 +1,57 @@
-# Conditional GAN for Multivariate Stock Time-Series Forecasting
+# Noise-Conditioned GAN for Quantum Circuit V&V
 
-This project implements a Conditional GAN (cGAN) architecture for multistep forecasting of stock price sequences, built from scratch in PyTorch. The system learns to generate realistic continuations of market windows using adversarial, reconstruction, and feature-matching losses.
+This project explores machine learning–assisted quantum circuit verification and validation (QCVV) by learning to model and forecast measurement outcome distributions under realistic noise.
+We build a Qiskit-based dataset generator that sweeps over circuit depths and noise strengths, then train a conditional GAN to predict how distribution drift evolves across future timesteps.
 
-## The project includes:
+## Project Overview
+### 1. Dataset Generation (Qiskit Aer)  
+We simulate noisy 3-qubit random circuits across a grid of:  
+- depth ∈ 1–80  
+- noise levels ∈ 0.0–0.2  
+- 2048 measurement shots per circuit  
+- amplitude damping + depolarizing models  
 
-- full training framework + logging + checkpointing
-- custom preprocessing pipeline for technical indicators
-- custom discriminator + encoder/decoder generator
-- Exponential Moving Average of weights for stability
-- gradient penalty + label smoothing + instance noise
+Output shape:
+[num_experiments, sequence_length=4, feature_dim = conditioning + distribution]
+Tensor is saved to disk for training.
 
-## Motivation
+### 2. Conditional GAN Architecture (PyTorch)
+The model consists of:
+- Generator  
+- 3-layer LSTM encoder/decoder  
+- Autoregressive conditioning on past sequence  
+- Noise-augmented decoding  
+- MLP output head w/ Tanh activation  
+- Discriminator  
+- Spectral normalization  
 
-Traditional time-series models struggle to capture multimodal futures and uncertainty. GAN-based forecasters can learn distributions over future price movements rather than point predictions, enabling more realistic simulations of market trajectories.
+### 3. Training Loop + Logging
+- Adversarial D/G optimization  
+- Checkpoints + best model saving  
+- Per-iteration averaged metrics  
+- Smoothed curve plotting  
+- Run summaries saved to JSON
 
-# Project Structure
-├── data_preprocessing.py   # feature engineering + tensor construction  
-├── models.py               # generator/discriminator modules + EMA  
-├── train.py                # training system + checkpointing + metrics  
-├── checkpoints/            # saved models  
-├── logs/                   # metrics, visualizations, and summaries  
-└── data/                   # raw + processed csv and tensor data  
+## Repository Structure  
+├── data_preprocessing.py     # Qiskit-based distribution dataset generation  
+├── models.py                 # Generator + Discriminator modules + EMA helper  
+├── train.py                  # full GAN training loop & logging utilities  
+├── data/                     # generated tensors (not included)  
+├── checkpoints/              # saved model states  
+├── logs/                     # metric logs + summaries  
+└── README.md
 
+## Usage
+Generate dataset  
+python data_preprocessing.py  
 
-# Usage
-Train the cGAN from CLI:  
+Train model  
 python train.py  
 
-Checkpoints and logs will be automatically stored in:  
-
-./checkpoints/  
-./logs/  
-
-# Output artifacts
-- learning curves (.png)  
-- JSON training summary files  
-- saved checkpoints & best model
-- console + file logging
+## Future Work
+- expand qubit count + entanglement topology sweeps  
+- learn noise transfer functions for device drift modeling  
+- integrate with cloud hardware QCVV experiments   
 
 # Papers used as references - 
 1. Deep generative modeling for financial time series with application in VaR: a comparative review: https://arxiv.org/abs/2401.10370
