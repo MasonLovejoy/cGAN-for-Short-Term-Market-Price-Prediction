@@ -19,10 +19,6 @@ class MinibatchStdDev(nn.Module):
         return torch.cat([x, vals], dim=1)
     
 class EMAModel:
-    """
-    Exponential Moving Average of model parameters.
-    Improves generator stability and quality.
-    """
     def __init__(self, model, decay=0.999):
         self.model = model
         self.decay = decay
@@ -34,20 +30,17 @@ class EMAModel:
                 self.shadow[name] = param.data.clone()
                 
     def update(self):
-        """Update EMA parameters."""
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 self.shadow[name] = self.decay * self.shadow[name] + (1 - self.decay) * param.data
                 
     def apply_shadow(self):
-        """Apply EMA parameters to model."""
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 self.backup[name] = param.data.clone()
                 param.data = self.shadow[name]
                 
     def restore(self):
-        """Restore original parameters."""
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 param.data = self.backup[name]
@@ -64,7 +57,6 @@ class DiscriminatorPlanner(nn.Module):
             self.minibatch_stddev = MinibatchStdDev()
             
         self.conv_layers = nn.Sequential(
-            # Input: (batch, 1, window_size, features)
             spectral_norm(nn.Conv2d(1, filter_num, kernel_size=(3, features), padding=(1, 0))),
             nn.LeakyReLU(0.2),
             nn.Dropout2d(0.3),

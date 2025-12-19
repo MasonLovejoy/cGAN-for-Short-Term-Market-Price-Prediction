@@ -20,42 +20,42 @@ from models import GeneratorPlanner, DiscriminatorPlanner, EMAModel
 
 @dataclass
 class TrainingConfig:
-    feature_size: int = 42
-    hidden_dim: int = 256
-    filter_num: int = 4
+    feature_size: int = 10
+    hidden_dim: int = 128
+    filter_num: int = 64
     p: int = 3
     q: int = 1 
 
     batch_size: int = 32
-    num_iterations: int = 40000
-    d_steps_per_g_step: int = 5
+    num_iterations: int = 25000
+    d_steps_per_g_step: int = 3
     
-    # TTUR
-    g_lr: float = 1e-4
-    d_lr: float = 4e-4
-    betas: Tuple[float, float] = (0.0, 0.9)
+    # Learning rates
+    g_lr: float = 2e-4
+    d_lr: float = 2e-4
+    betas: Tuple[float, float] = (0.5, 0.999)
     
     gradient_clip: float = 1.0
-    gradient_penalty_weight: float = 10.0
+    gradient_penalty_weight: float = 5.0
     
     label_smoothing: bool = True
-    real_label_range: Tuple[float, float] = (0.7, 1.2)
-    fake_label_range: Tuple[float, float] = (0.0, 0.3)
+    real_label_range: Tuple[float, float] = (0.9, 1.0)
+    fake_label_range: Tuple[float, float] = (0.0, 0.1)
     
-    instance_noise_std: float = 0.1
-    noise_decay: float = 0.9999
+    instance_noise_std: float = 0.05
+    noise_decay: float = 0.999
 
-    use_ema: bool = True
+    use_ema: bool = False
     ema_decay: float = 0.999
     
     use_feature_matching: bool = True
-    feature_matching_weight: float = 0.1
+    feature_matching_weight: float = 1.0
     use_minibatch_stddev: bool = True
     
     log_interval: int = 50
     checkpoint_interval: int = 1000
     
-    data_path: str = 'data/nvda_data_tensor'
+    data_path: str = 'data/q_dist_data_tensor'
     checkpoint_dir: str = 'checkpoints'
     log_dir: str = 'logs'
 
@@ -72,15 +72,20 @@ class MetricsTracker:
         self.d_losses_total = []
         self.g_adv_losses = []
         self.g_recon_losses = []
+        self.d_real_preds = []
+        self.d_fake_preds = []
         
     def update(self, g_loss: float, d_loss_real: float, d_loss_fake: float, 
-               g_adv: float = 0.0, g_recon: float = 0.0):
+               g_adv: float = 0.0, g_recon: float = 0.0,
+               d_real_pred: float = 0.0, d_fake_pred: float = 0.0):
         self.g_losses.append(g_loss)
         self.d_losses_real.append(d_loss_real)
         self.d_losses_fake.append(d_loss_fake)
         self.d_losses_total.append(d_loss_real + d_loss_fake)
         self.g_adv_losses.append(g_adv)
         self.g_recon_losses.append(g_recon)
+        self.d_real_preds.append(d_real_pred)
+        self.d_fake_preds.append(d_fake_pred)
         
     def get_recent_avg(self) -> Optional[Dict[str, float]]:
         if len(self.g_losses) < self.window_size:
@@ -92,7 +97,9 @@ class MetricsTracker:
             'd_loss_real_avg': np.mean(self.d_losses_real[-self.window_size:]),
             'd_loss_fake_avg': np.mean(self.d_losses_fake[-self.window_size:]),
             'g_adv_avg': np.mean(self.g_adv_losses[-self.window_size:]),
-            'g_recon_avg': np.mean(self.g_recon_losses[-self.window_size:])
+            'g_recon_avg': np.mean(self.g_recon_losses[-self.window_size:]),
+            'd_real_pred_avg': np.mean(self.d_real_preds[-self.window_size:]),
+            'd_fake_pred_avg': np.mean(self.d_fake_preds[-self.window_size:])
         }
     
     def get_all_metrics(self) -> Dict[str, List[float]]:
@@ -105,11 +112,12 @@ class MetricsTracker:
 
 
 class GANTrainer:
-    def __init__(self, config: TrainingConfig, G, D, device='cpu'):
+    def __init__(self, config: TrainingConfig, G, D, device='cuda'):
         self.config = config
-        self.G = G.to(device)
-        self.D = D.to(device)
-        self.device = device
+        self.device = torch.device(device) if isinstance(device, str) else device
+        self.G = G.to(self.device)
+        self.D = D.to(self.device)
+        self.iteration = 0
         
         if config.use_ema:
             self.G_ema = EMAModel(G, decay=config.ema_decay)
@@ -141,7 +149,7 @@ class GANTrainer:
         gradients = torch.autograd.grad(
             outputs=d_interpolates,
             inputs=interpolates,
-            grad_outputs=torch.ones_like(d_interpolates),
+            grad_outputs=torch.ones_like(d_interpolates, device=self.device),
             create_graph=True,
             retain_graph=True,
             only_inputs=True
@@ -153,7 +161,6 @@ class GANTrainer:
         return gradient_penalty
         
     def add_instance_noise(self, x):
-        """Add instance noise to inputs."""
         if self.current_noise_std > 0:
             noise = torch.randn_like(x) * self.current_noise_std
             return x + noise
@@ -161,14 +168,19 @@ class GANTrainer:
         
     def get_labels(self, batch_size, is_real=True):
         if not self.config.label_smoothing:
-            labels = torch.ones(batch_size, 1) if is_real else torch.zeros(batch_size, 1)
-            return labels.to(self.device)
+            labels = torch.ones(batch_size, 1, device=self.device) if is_real \
+                     else torch.zeros(batch_size, 1, device=self.device)
+            return labels
             
         if is_real:
-            labels = torch.FloatTensor(batch_size, 1).uniform_(*self.config.real_label_range)
+            labels = torch.FloatTensor(batch_size, 1).uniform_(
+                *self.config.real_label_range
+            ).to(self.device)
         else:
-            labels = torch.FloatTensor(batch_size, 1).uniform_(*self.config.fake_label_range)
-        return labels.to(self.device)
+            labels = torch.FloatTensor(batch_size, 1).uniform_(
+                *self.config.fake_label_range
+            ).to(self.device)
+        return labels
         
     def D_trainstep(self, x_fake, x_real):
         self.D.train()
@@ -178,7 +190,8 @@ class GANTrainer:
         
         x_real_noisy = self.add_instance_noise(x_real)
         x_fake_noisy = self.add_instance_noise(x_fake)
-        x_real_noisy = x_real_noisy.unsqueeze(1)   # (B,1,T,F)
+        
+        x_real_noisy = x_real_noisy.unsqueeze(1)
         x_fake_noisy = x_fake_noisy.unsqueeze(1)
         
         d_real = self.D(x_real_noisy)
@@ -189,9 +202,10 @@ class GANTrainer:
         fake_labels = self.get_labels(batch_size, is_real=False)
         loss_fake = nn.functional.binary_cross_entropy_with_logits(d_fake, fake_labels)
         
-        x_real = x_real.unsqueeze(1)
-        x_fake = x_fake.detach().unsqueeze(1)
-        gp = self.compute_gradient_penalty(x_real, x_fake.detach())
+        d_real_pred = torch.sigmoid(d_real).mean().item()
+        d_fake_pred = torch.sigmoid(d_fake).mean().item()
+        
+        gp = self.compute_gradient_penalty(x_real_noisy, x_fake_noisy.detach())
 
         d_loss = loss_real + loss_fake + self.config.gradient_penalty_weight * gp
         d_loss.backward()
@@ -200,34 +214,38 @@ class GANTrainer:
         self.D_optimizer.step()
         self.current_noise_std *= self.config.noise_decay
         
-        return loss_real.item(), loss_fake.item(), gp.item()
+        return loss_real.item(), loss_fake.item(), gp.item(), d_real_pred, d_fake_pred
         
     def G_trainstep(self, x_real):
         self.G.train()
         self.G_optimizer.zero_grad()
         
         batch_size = x_real.size(0)
-        x_past = x_real[:, :self.config.p]
-        x_fake = self.G(x_past)
-        x_fake_full = torch.cat([x_past, x_fake], dim=1)
+        
+        x_past = x_real[:, :self.config.p]  # (B, 3, 10)
+        x_future_real = x_real[:, self.config.p:]  # (B, 1, 10)
+        
+        x_future_fake = self.G(x_past)
+        x_fake_full = torch.cat([x_past, x_future_fake], dim=1)  # (B, 4, 10)
 
-        x_fake_full = x_fake_full.unsqueeze(1)  # (B,1,T,F)
-        x_real = x_real.unsqueeze(1)
+        x_fake_full_d = x_fake_full.unsqueeze(1)  # (B, 1, 4, 10)
+        x_real_full_d = x_real.unsqueeze(1)  # (B, 1, 4, 10)
         
         if self.config.use_feature_matching:
-            d_fake, fake_features = self.D(x_fake_full, return_features=True)
+            d_fake, fake_features = self.D(x_fake_full_d, return_features=True)
             with torch.no_grad():
-                _, real_features = self.D(x_real, return_features=True)
+                _, real_features = self.D(x_real_full_d, return_features=True)
             feature_loss = torch.mean((fake_features - real_features) ** 2)
         else:
-            d_fake = self.D(x_fake_full)
+            d_fake = self.D(x_fake_full_d)
             feature_loss = 0.0
         
-        real_labels = torch.ones(batch_size, 1).to(self.device)
+        real_labels = torch.ones(batch_size, 1, device=self.device)
         g_adv_loss = nn.functional.binary_cross_entropy_with_logits(d_fake, real_labels)
-        g_recon_loss = torch.mean((x_fake_full - x_real) ** 2)
-        total_g_loss = g_adv_loss + g_recon_loss
-
+        
+        g_recon_loss = torch.mean((x_future_fake - x_future_real) ** 2)
+        total_g_loss = g_adv_loss + 0.1 * g_recon_loss
+        
         if self.config.use_feature_matching and isinstance(feature_loss, torch.Tensor):
             total_g_loss += self.config.feature_matching_weight * feature_loss
         
@@ -239,13 +257,24 @@ class GANTrainer:
         if self.G_ema is not None:
             self.G_ema.update()
         
+        self.iteration += 1
+        
         return total_g_loss.item(), g_adv_loss.item(), g_recon_loss.item()
 
 
 class CGANTrainingSystem:
     def __init__(self, config: TrainingConfig):
         self.config = config
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda')
+            torch.cuda.init()
+            torch.cuda.set_device(0)
+            torch.backends.cudnn.benchmark = True
+            print(f"Using GPU: {torch.cuda.get_device_name(0)}")
+        else:
+            self.device = torch.device('cpu')
+            print("CUDA not available, using CPU")
         
         self.setup_directories()
         self.setup_logging()
@@ -280,7 +309,21 @@ class CGANTrainingSystem:
         try:
             self.data = torch.load(self.config.data_path).float()
             self.logger.info(f"Loaded data with shape: {self.data.shape}")
+            
+            # Data statistics
+            print("\n" + "="*60)
+            print("DATA STATISTICS")
+            print("="*60)
+            print(f"Data mean: {self.data.mean():.4f}")
+            print(f"Data std: {self.data.std():.4f}")
+            print(f"Data min: {self.data.min():.4f}")
+            print(f"Data max: {self.data.max():.4f}")
+            print("="*60 + "\n")
+            
+            # Normalize
             self.data = torch.clamp(self.data, -3, 3) / 3.0
+            self.data = self.data.to(self.device)
+            self.logger.info(f"Data moved to {self.device}")
             
         except Exception as e:
             self.logger.error(f"Failed to load data: {e}")
@@ -292,13 +335,13 @@ class CGANTrainingSystem:
             hidden_dim=self.config.hidden_dim,
             window_size=self.config.p,
             target_size=self.config.q
-        )
+        ).to(self.device)
         
         self.D = DiscriminatorPlanner(
             features=self.config.feature_size,
             filter_num=self.config.filter_num,
             use_minibatch_stddev=self.config.use_minibatch_stddev
-        )
+        ).to(self.device)
         
         self.trainer = GANTrainer(self.config, self.G, self.D, device=self.device)
         
@@ -306,6 +349,7 @@ class CGANTrainingSystem:
         d_params = sum(p.numel() for p in self.D.parameters())
         self.logger.info(f"Generator parameters: {g_params:,}")
         self.logger.info(f"Discriminator parameters: {d_params:,}")
+        print(f"\nParameter Ratio (G/D): {g_params/d_params:.2f}x\n")
         
     def sample_batch(self) -> torch.Tensor:
         indices = np.random.choice(
@@ -313,10 +357,12 @@ class CGANTrainingSystem:
             size=self.config.batch_size,
             replace=True
         )
-        return self.data[indices].to(self.device)
+        return self.data[indices]
         
     def train_step(self):
         d_losses_real, d_losses_fake = [], []
+        d_real_preds, d_fake_preds = [], []
+        
         for _ in range(self.config.d_steps_per_g_step):
             x_real = self.sample_batch()
             x_past = x_real[:, :self.config.p]
@@ -325,9 +371,11 @@ class CGANTrainingSystem:
                 x_fake = self.G(x_past)
                 x_fake_full = torch.cat([x_past, x_fake], dim=1)
             
-            d_loss_real, d_loss_fake, gp = self.trainer.D_trainstep(x_fake_full, x_real)
+            d_loss_real, d_loss_fake, gp, d_real_pred, d_fake_pred = self.trainer.D_trainstep(x_fake_full, x_real)
             d_losses_real.append(d_loss_real)
             d_losses_fake.append(d_loss_fake)
+            d_real_preds.append(d_real_pred)
+            d_fake_preds.append(d_fake_pred)
         
         x_real = self.sample_batch()
         g_loss, g_adv, g_recon = self.trainer.G_trainstep(x_real)
@@ -337,7 +385,9 @@ class CGANTrainingSystem:
             'd_loss_real': np.mean(d_losses_real),
             'd_loss_fake': np.mean(d_losses_fake),
             'g_adv': g_adv,
-            'g_recon': g_recon
+            'g_recon': g_recon,
+            'd_real_pred': np.mean(d_real_preds),
+            'd_fake_pred': np.mean(d_fake_preds)
         }
         
     def save_checkpoint(self, is_best=False):
@@ -421,12 +471,16 @@ class CGANTrainingSystem:
                     losses['d_loss_real'],
                     losses['d_loss_fake'],
                     losses['g_adv'],
-                    losses['g_recon']
+                    losses['g_recon'],
+                    losses['d_real_pred'],
+                    losses['d_fake_pred']
                 )
                 
                 pbar.set_postfix({
                     'G': f"{losses['g_loss']:.4f}",
-                    'D': f"{losses['d_loss_real'] + losses['d_loss_fake']:.4f}"
+                    'D': f"{losses['d_loss_real'] + losses['d_loss_fake']:.4f}",
+                    'D(r)': f"{losses['d_real_pred']:.2f}",
+                    'D(f)': f"{losses['d_fake_pred']:.2f}"
                 })
                 
                 if (self.iteration + 1) % self.config.log_interval == 0:
@@ -436,6 +490,8 @@ class CGANTrainingSystem:
                             f"Iter {self.iteration+1:6d} | "
                             f"G: {metrics_avg['g_loss_avg']:.4f} | "
                             f"D: {metrics_avg['d_loss_avg']:.4f} | "
+                            f"D(real): {metrics_avg['d_real_pred_avg']:.3f} | "
+                            f"D(fake): {metrics_avg['d_fake_pred_avg']:.3f} | "
                             f"G_adv: {metrics_avg['g_adv_avg']:.4f} | "
                             f"G_recon: {metrics_avg['g_recon_avg']:.4f}"
                         )
@@ -489,17 +545,7 @@ class CGANTrainingSystem:
 
 
 def main():
-    config = TrainingConfig(
-        batch_size=32,
-        num_iterations=40000,
-        d_steps_per_g_step=5,
-        log_interval=50,
-        checkpoint_interval=1000,
-        label_smoothing=True,
-        use_ema=True,
-        use_feature_matching=True,
-        use_minibatch_stddev=True
-    )
+    config = TrainingConfig()
     
     trainer = CGANTrainingSystem(config)
     trainer.train()
